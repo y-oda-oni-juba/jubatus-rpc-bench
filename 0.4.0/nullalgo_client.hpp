@@ -51,8 +51,6 @@ public:
 
 private:
   msgpack::rpc::client c_;
-  msgpack::rpc::client c_;
-  msgpack::rpc::client c_;
 };
 
 } // namespace client

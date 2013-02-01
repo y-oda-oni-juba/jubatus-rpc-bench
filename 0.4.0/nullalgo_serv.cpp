@@ -1,4 +1,5 @@
 
+#include <jubatus/framework/mixer/mixer_factory.hpp>
 #include "nullalgo_serv.hpp"
 #include <glog/logging.h>
 
@@ -10,6 +11,10 @@ nullalgo_serv::nullalgo_serv(const server_argv& a,
                              const jubatus::common::cshared_ptr<jubatus::common::lock_service>& zk)
   :server_base(a)
 {
+  mixer_.reset(jubatus::framework::mixer::create_mixer(a, zk));
+  mixable_holder_.reset(new mixable_holder());
+  mixer_->set_mixable_holder(mixable_holder_);
+
   create_stock_datum();
 }
 
@@ -29,7 +34,7 @@ bool nullalgo_serv::update_cht(const std::string &id, const datum &param) {
 }
 
 datum nullalgo_serv::query_cht(const std::string &id, const std::string &param) {
-  return number_datum_;
+  return string_datum_;
 }
 
 bool nullalgo_serv::save(const std::string &id) {
@@ -48,11 +53,11 @@ bool nullalgo_serv::set_config(const std::string &config) {
 }
 
 mixer::mixer* nullalgo_serv::get_mixer() const {
-  return NULL;
+  return mixer_.get();
 }
 
 pfi::lang::shared_ptr<mixable_holder> nullalgo_serv::get_mixable_holder() const {
-  return pfi::lang::shared_ptr<mixable_holder>();
+  return mixable_holder_;
 }
 
 void nullalgo_serv::create_stock_datum() {

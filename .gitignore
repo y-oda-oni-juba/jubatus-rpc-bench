@@ -16,3 +16,7 @@
 *~
 \#*
 
+# ignore waf
+.lock-wafbuild
+.waf-*
+build

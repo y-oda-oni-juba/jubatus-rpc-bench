@@ -34,6 +34,9 @@ private:
 
   datum string_datum_;
   datum number_datum_;
+
+  pfi::lang::scoped_ptr<framework::mixer::mixer> mixer_;
+  pfi::lang::shared_ptr<framework::mixable_holder> mixable_holder_;
 };
 }} // namespace jubatus::server
 
