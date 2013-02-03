@@ -46,6 +46,7 @@ def configure(conf):
   conf.check_cxx(lib = 'jubacommon', mandatory = True)
   conf.check_cxx(lib = 'jubacommon_mprpc', mandatory = True)
   conf.check_cxx(lib = 'jubamixer', mandatory = True)
+  conf.check_cxx(lib = 'rt', mandatory = True )
 
 def build(bld):
   bld.program(
@@ -71,5 +72,5 @@ def build(bld):
     target = 'rpc-bench',
     use = ['PFICOMMON', 'PFICOMMON_SYSTEM',
            'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
-           'MSGPACK']
+           'MSGPACK', 'RT']
     )
