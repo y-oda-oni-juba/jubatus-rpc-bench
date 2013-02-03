@@ -70,7 +70,7 @@ def build(bld):
   bld.program(
     source = 'rpc-bench.cpp',
     target = 'rpc-bench',
-    use = ['PFICOMMON', 'PFICOMMON_SYSTEM',
+    use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_LANG', 'PFICOMMON_CONCURRENT',
            'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
            'MSGPACK', 'RT']
     )

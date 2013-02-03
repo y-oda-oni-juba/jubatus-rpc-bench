@@ -1,4 +1,5 @@
-
+#include <sstream>
+#include <string>
 #include <jubatus/framework/mixer/mixer_factory.hpp>
 #include "nullalgo_serv.hpp"
 #include <glog/logging.h>
@@ -62,9 +63,15 @@ pfi::lang::shared_ptr<mixable_holder> nullalgo_serv::get_mixable_holder() const 
 
 void nullalgo_serv::create_stock_datum() {
   // string datum
-  string_datum_.string_values.push_back( std::make_pair( std::string("key1"), std::string("value1")));
-  string_datum_.string_values.push_back( std::make_pair( std::string("key2"), std::string("value2")));
-  string_datum_.string_values.push_back( std::make_pair( std::string("key3"), std::string("value3")));
+  std::stringstream ss;
+  for( int i = 0; i < 1024; ++i ) ss << '.';
+  std::string value(ss.str());
+
+  for(int i = 0; i < 1024; ++i ) {
+    std::stringstream kss;
+    kss << "key-" << i;
+    string_datum_.string_values.push_back( std::make_pair( kss.str(), value ));
+  }
   
   // number datum
   number_datum_.num_values.push_back( std::make_pair( std::string("key1"), 1.0));

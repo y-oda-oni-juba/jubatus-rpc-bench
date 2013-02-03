@@ -1,4 +1,5 @@
-
+#include <sstream>
+#include <string>
 #include <jubatus/framework/mixer/mixer_factory.hpp>
 #include "nullalgo_serv.hpp"
 #include <glog/logging.h>
@@ -34,7 +35,10 @@ bool nullalgo_serv::update_cht(const std::string &id, const datum &param) {
 }
 
 datum nullalgo_serv::query_cht(const std::string &id, const std::string &param) {
-  return string_datum_;
+  if ( param == "large" )
+    return large_string_datum_;
+  else
+    return string_datum_;
 }
 
 bool nullalgo_serv::save(const std::string &id) {
@@ -61,15 +65,28 @@ pfi::lang::shared_ptr<mixable_holder> nullalgo_serv::get_mixable_holder() const 
 }
 
 void nullalgo_serv::create_stock_datum() {
+  using namespace std;
+
   // string datum
-  string_datum_.string_values.push_back( std::make_pair( std::string("key1"), std::string("value1")));
-  string_datum_.string_values.push_back( std::make_pair( std::string("key2"), std::string("value2")));
-  string_datum_.string_values.push_back( std::make_pair( std::string("key3"), std::string("value3")));
+  string_datum_.string_values.push_back( make_pair( string("key1"), string("value1")) );
+  string_datum_.string_values.push_back( make_pair( string("key2"), string("value2")) );
+  string_datum_.string_values.push_back( make_pair( string("key3"), string("value3")) );
+
+  // large string datum
+  stringstream value_ss;
+  for( int i = 0; i < 1024; ++i ) value_ss << '.';
+  string value(value_ss.str());
+
+  for(int i = 0; i < 1024; ++i ) {
+    stringstream key_ss;
+    key_ss << "key-" << i;
+    string_datum_.string_values.push_back( make_pair( key_ss.str(), value ) );
+  }
   
   // number datum
-  number_datum_.num_values.push_back( std::make_pair( std::string("key1"), 1.0));
-  number_datum_.num_values.push_back( std::make_pair( std::string("key2"), 2.0));
-  number_datum_.num_values.push_back( std::make_pair( std::string("key3"), 3.0));
+  number_datum_.num_values.push_back( make_pair( string("key1"), 1.0));
+  number_datum_.num_values.push_back( make_pair( string("key2"), 2.0));
+  number_datum_.num_values.push_back( make_pair( string("key3"), 3.0));
 }
 
 }} // namespace jubatus::server

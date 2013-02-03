@@ -33,6 +33,7 @@ private:
   void create_stock_datum();
 
   datum string_datum_;
+  datum large_string_datum_;
   datum number_datum_;
 
   pfi::lang::scoped_ptr<framework::mixer::mixer> mixer_;
