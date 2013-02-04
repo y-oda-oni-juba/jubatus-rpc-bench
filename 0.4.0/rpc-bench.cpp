@@ -56,7 +56,7 @@ class Task {
 public:
   Task(int id, int query_num, const std::string &host, int port, std::string &name) :
     id_(id), query_num_(query_num), host_(host), port_(port), name_(name),
-    timeout_sec_( 5.0 ),
+    timeout_sec_( 60.0 ),
     has_error_(false) {
   }
 
@@ -103,7 +103,7 @@ private:
       }
       exec_time_.stop();
     } catch ( const std::exception &e ) {
-      std::cerr << "Exception caught: " << e.what() << std::endl;
+      std::cerr << "*** Exception caught ***: " << e.what() << std::endl;
       has_error_ = true;
     }
   }
@@ -132,6 +132,7 @@ int port = 9000;
 std::string cluster_name = "rpc-bench";
 int thread_num = 1;
 int query_num = 1000;
+int timeout_sec = 60;
 
 static int parse_positive_number(const char *optname, const char *optarg, 
                                  int lower_bound = 1 ) {
@@ -157,6 +158,7 @@ static void show_usage( std::ostream &out = std::cerr ) {
       << "  --name CLUSTER_NAME" << std::endl
       << "  --thread #THREAD" << std::endl
       << "  --query #QUERY" << std::endl
+      << "  --timeout SEC" << std::endl
       << "  --version" << std::endl
       << "  --help" << std::endl;
 }
@@ -168,6 +170,7 @@ int main(int argc, char **argv) {
     OPTION_NAME,
     OPTION_THREAD_NUM,
     OPTION_QUERY_NUM,
+    OPTION_TIMEOUT,
 
     OPTION_VERSION,
     OPTION_HELP,
@@ -178,6 +181,7 @@ int main(int argc, char **argv) {
     { "name",   required_argument, NULL, OPTION_NAME },
     { "thread", required_argument, NULL, OPTION_THREAD_NUM },
     { "query",  required_argument, NULL, OPTION_QUERY_NUM },
+    { "timeout",required_argument, NULL, OPTION_TIMEOUT },
 
     { "version",no_argument,       NULL, OPTION_VERSION },
     { "help",   no_argument,       NULL, OPTION_HELP },
@@ -204,6 +208,9 @@ int main(int argc, char **argv) {
       case OPTION_QUERY_NUM:
         query_num = parse_positive_number( "query", optarg );
         break;
+      case OPTION_TIMEOUT:
+        timeout_sec = parse_positive_number( "timeout", optarg );
+        break;
       case OPTION_VERSION:
         show_version();
         return 0;
@@ -226,7 +233,9 @@ int main(int argc, char **argv) {
   std::vector<task_ptr> tasks;
 
   for(int i = 0; i < thread_num; ++i ) {
-    tasks.push_back( task_ptr( new task_type(i, query_num, host, port, cluster_name ) ) );
+    task_ptr task( new task_type(i, query_num, host, port, cluster_name ) );
+    task->set_timeout_sec( double(timeout_sec) );
+    tasks.push_back(task);
   }
 
   jubatus::rpc_bench::TimeSpan total_exec_time;
@@ -241,16 +250,18 @@ int main(int argc, char **argv) {
 
   // statistics
   double latency_total = 0.0;
+  int query_total_count = 0;
   for( int i = 0; i < thread_num; ++i ) {
     const std::vector<double>&latency_rec = tasks[i]->latency_records();
-    for(int i = 0; i < query_num; ++i ) latency_total += latency_rec[i];
+    for(int i = 0; i < (int)latency_rec.size(); ++i ) latency_total += latency_rec[i];
+    query_total_count += latency_rec.size();
   }
-  double latency = latency_total/(query_num*thread_num);
+  double latency = latency_total/query_total_count;
 
-  double query_per_sec = double(query_num*thread_num)/(total_exec_time.elapsed_time_msec()/1000.0);
+  double query_per_sec = double(query_total_count)/(total_exec_time.elapsed_time_msec()/1000.0);
 
   std::cout << "#thread: " << thread_num << std::endl;
-  std::cout << "total query: " << query_num*thread_num << std::endl;
+  std::cout << "total query: " << query_total_count << std::endl;
   std::cout << "total time(msec): " << total_exec_time.elapsed_time_msec() << std::endl;
   std::cout << "query/sec: " << query_per_sec << std::endl;
   std::cout << "latency(msec): " << latency << std::endl;
