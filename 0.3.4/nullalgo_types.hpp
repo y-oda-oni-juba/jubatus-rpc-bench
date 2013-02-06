@@ -2,8 +2,8 @@
 // This file is auto-generated from nullalgo.idl
 // *** DO NOT EDIT ***
 
-#ifndef JUBATUS_NULLALGO_TYPES_HPP_
-#define JUBATUS_NULLALGO_TYPES_HPP_
+#ifndef NULLALGO_TYPES_HPP_
+#define NULLALGO_TYPES_HPP_
 
 
 #include <vector>
@@ -30,4 +30,4 @@ public:
 
 
 
-#endif // JUBATUS_NULLALGO_TYPES_HPP_
+#endif // NULLALGO_TYPES_HPP_

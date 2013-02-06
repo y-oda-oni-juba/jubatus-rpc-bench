@@ -2,8 +2,8 @@
 // This file is auto-generated from nullalgo.idl
 // *** DO NOT EDIT ***
 
-#ifndef JUBATUS_CLIENT_NULLALGO_CLIENT_HPP_
-#define JUBATUS_CLIENT_NULLALGO_CLIENT_HPP_
+#ifndef NULLALGO_CLIENT_HPP_
+#define NULLALGO_CLIENT_HPP_
 
 
 #include "nullalgo_types.hpp"
@@ -35,6 +35,10 @@ public:
       return call<datum(std::string, std::string, std::string)>("query_cht")(name, id, param);
     }
 
+    datum query_cht_nolock(std::string name, std::string id, std::string param) {
+      return call<datum(std::string, std::string, std::string)>("query_cht_nolock")(name, id, param);
+    }
+
     bool save(std::string name, std::string id) {
       return call<bool(std::string, std::string)>("save")(name, id);
     }
@@ -56,4 +60,4 @@ private:
 
 
 
-#endif // JUBATUS_CLIENT_NULLALGO_CLIENT_HPP_
+#endif // NULLALGO_CLIENT_HPP_

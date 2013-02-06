@@ -10,7 +10,7 @@ def options(opt):
 def generate(ctx):
   call(['jenerator', name + '.idl', '-o', '.', '-t'])
   call(['mpidl', 'cpp', name + '.idl', '-o', '.', '-p', '-n', 'jubatus'])
-  call(['mpidlconv', '-i', '.', '-s', name])
+  # call(['mpidlconv', '-i', '.', '-s', name])
 
 def clean_generated(ctx):
   generated = [
