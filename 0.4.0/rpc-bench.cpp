@@ -16,7 +16,7 @@
 
 #include "nullalgo_client.hpp"
 
-static const char *version_string = "1.0.0.130201a";
+static const char *version_string = "1.0.0.130206a";
 
 namespace jubatus {
 namespace rpc_bench {
@@ -54,8 +54,17 @@ private:
 
 class Task {
 public:
-  Task(int id, int query_num, const std::string &host, int port, std::string &name) :
-    id_(id), query_num_(query_num), host_(host), port_(port), name_(name),
+  enum {
+    METHOD_QUERY_CHT,
+    METHOD_QUERY_CHT_LARGE,
+    METHOD_QUERY_CHT_NOLOCK,
+  };
+
+public:
+  Task(int id, int query_num, int method_id, 
+       const std::string &host, int port, std::string &name) :
+    id_(id), query_num_(query_num), method_id_(method_id),
+    host_(host), port_(port), name_(name),
     timeout_sec_( 60.0 ),
     has_error_(false) {
   }
@@ -86,7 +95,7 @@ private:
     id_ss << id_;
     std::string id_str( id_ss.str() );
 
-    std::string key_str( "" );
+    std::string key_str( method_id_ == METHOD_QUERY_CHT_LARGE ? "large" : "" );
 
     jubatus::client::nullalgo client( host_, port_, timeout_sec_ );
 
@@ -96,7 +105,11 @@ private:
       for(int i = 0; i < query_num_; ++i ) {
         TimeSpan lap_time;
         lap_time.start();
-        (void)client.query_cht( name_, id_str, key_str);
+        if ( method_id_ == METHOD_QUERY_CHT_NOLOCK )
+          (void)client.query_cht_nolock( name_, id_str, key_str);
+        else {
+          (void)client.query_cht( name_, id_str, key_str);
+        }
         lap_time.stop();
 
         latency_rec_.push_back( lap_time.elapsed_time_msec() );
@@ -110,6 +123,7 @@ private:
 
   int id_;
   int query_num_;
+  int method_id_;
   std::string host_;
   int port_;
   std::string name_;
@@ -127,13 +141,6 @@ private:
 
 //// main
 
-std::string host = "localhost";
-int port = 9000;
-std::string cluster_name = "rpc-bench";
-int thread_num = 1;
-int query_num = 1000;
-int timeout_sec = 60;
-
 static int parse_positive_number(const char *optname, const char *optarg, 
                                  int lower_bound = 1 ) {
   int val = strtol(optarg, NULL, 10);
@@ -144,6 +151,19 @@ static int parse_positive_number(const char *optname, const char *optarg,
   }
 
   return val;
+}
+
+static int parse_method_id(const char *method_name) {
+  using namespace jubatus::rpc_bench;
+
+  if ( strcasecmp( method_name, "query_cht" ) == 0 )
+    return Task::METHOD_QUERY_CHT;
+  else if  ( strcasecmp( method_name, "query_cht_large" ) == 0 )
+    return Task::METHOD_QUERY_CHT_LARGE;
+  else if  ( strcasecmp( method_name, "query_cht_nolock" ) == 0 )
+    return Task::METHOD_QUERY_CHT_NOLOCK;
+  
+  throw jubatus::rpc_bench::InvalidOption( "invalid method-type" );
 }
 
 static void show_version() {
@@ -158,33 +178,48 @@ static void show_usage( std::ostream &out = std::cerr ) {
       << "  --name CLUSTER_NAME" << std::endl
       << "  --thread #THREAD" << std::endl
       << "  --query #QUERY" << std::endl
+      << "  --method METHOD ( query_cht, query_cht_large, query_cht_nolock )" << std::endl
       << "  --timeout SEC" << std::endl
+      << "  --dump-latency" << std::endl
       << "  --version" << std::endl
       << "  --help" << std::endl;
 }
 
 int main(int argc, char **argv) {
+  std::string host = "localhost";
+  int port = 9000;
+  std::string cluster_name = "rpc-bench";
+  int thread_num = 1;
+  int query_num = 1000;
+  int method_id = jubatus::rpc_bench::Task::METHOD_QUERY_CHT;
+  int timeout_sec = 60;
+  bool dump_latency = false;
+
   enum {
     OPTION_HOST = 100,
     OPTION_PORT,
     OPTION_NAME,
     OPTION_THREAD_NUM,
     OPTION_QUERY_NUM,
+    OPTION_METHOD,
     OPTION_TIMEOUT,
+    OPTION_DUMP_LATENCY,
 
     OPTION_VERSION,
     OPTION_HELP,
   };
   struct option longopts[] = {
-    { "host",   required_argument, NULL, OPTION_HOST },
-    { "port",   required_argument, NULL, OPTION_PORT },
-    { "name",   required_argument, NULL, OPTION_NAME },
-    { "thread", required_argument, NULL, OPTION_THREAD_NUM },
-    { "query",  required_argument, NULL, OPTION_QUERY_NUM },
-    { "timeout",required_argument, NULL, OPTION_TIMEOUT },
+    { "host",           required_argument, NULL, OPTION_HOST },
+    { "port",           required_argument, NULL, OPTION_PORT },
+    { "name",           required_argument, NULL, OPTION_NAME },
+    { "thread",         required_argument, NULL, OPTION_THREAD_NUM },
+    { "query",          required_argument, NULL, OPTION_QUERY_NUM },
+    { "method",         required_argument, NULL, OPTION_METHOD },
+    { "timeout",        required_argument, NULL, OPTION_TIMEOUT },
+    { "dump-latency",   no_argument,       NULL, OPTION_DUMP_LATENCY },
 
-    { "version",no_argument,       NULL, OPTION_VERSION },
-    { "help",   no_argument,       NULL, OPTION_HELP },
+    { "version",        no_argument,       NULL, OPTION_VERSION },
+    { "help",           no_argument,       NULL, OPTION_HELP },
 
     { 0, 0, 0, 0 }
   };
@@ -208,8 +243,14 @@ int main(int argc, char **argv) {
       case OPTION_QUERY_NUM:
         query_num = parse_positive_number( "query", optarg );
         break;
+      case OPTION_METHOD:
+        method_id = parse_method_id( optarg );
+        break;
       case OPTION_TIMEOUT:
         timeout_sec = parse_positive_number( "timeout", optarg );
+        break;
+      case OPTION_DUMP_LATENCY:
+        dump_latency = true;
         break;
       case OPTION_VERSION:
         show_version();
@@ -233,7 +274,7 @@ int main(int argc, char **argv) {
   std::vector<task_ptr> tasks;
 
   for(int i = 0; i < thread_num; ++i ) {
-    task_ptr task( new task_type(i, query_num, host, port, cluster_name ) );
+    task_ptr task( new task_type(i, query_num, method_id, host, port, cluster_name ) );
     task->set_timeout_sec( double(timeout_sec) );
     tasks.push_back(task);
   }
@@ -253,7 +294,7 @@ int main(int argc, char **argv) {
   int query_total_count = 0;
   for( int i = 0; i < thread_num; ++i ) {
     const std::vector<double>&latency_rec = tasks[i]->latency_records();
-    for(int i = 0; i < (int)latency_rec.size(); ++i ) latency_total += latency_rec[i];
+    for(int j = 0; j < (int)latency_rec.size(); ++j ) latency_total += latency_rec[j];
     query_total_count += latency_rec.size();
   }
   double latency = latency_total/query_total_count;
@@ -264,7 +305,21 @@ int main(int argc, char **argv) {
   std::cout << "total query: " << query_total_count << std::endl;
   std::cout << "total time(msec): " << total_exec_time.elapsed_time_msec() << std::endl;
   std::cout << "query/sec: " << query_per_sec << std::endl;
-  std::cout << "latency(msec): " << latency << std::endl;
+  std::cout << "mean latency(msec): " << latency << std::endl;
+
+  if ( dump_latency ) {
+    std::cout << "latency(msec): ";
+    bool first = true;
+    for( int i = 0; i < thread_num; ++i ) {
+      const std::vector<double>&latency_rec = tasks[i]->latency_records();
+      for( int j = 0; j < (int)latency_rec.size(); ++j ) {
+        if ( !first ) std::cout << ", ";
+        std::cout << latency_rec[j];
+        first = false;
+      }
+    }
+    std::cout << std::endl;
+  }
 
   return 0;
 }

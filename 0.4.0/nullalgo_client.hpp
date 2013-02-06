@@ -37,6 +37,10 @@ public:
       return c_.call("query_cht", name, id, param).get<datum >();
     }
 
+    datum query_cht_nolock(std::string name, std::string id, std::string param) {
+      return c_.call("query_cht_nolock", name, id, param).get<datum >();
+    }
+
     bool save(std::string name, std::string id) {
       return c_.call("save", name, id).get<bool >();
     }

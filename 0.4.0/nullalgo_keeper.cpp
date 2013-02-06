@@ -13,6 +13,7 @@ int main(int args, char** argv){
     k.register_async_random<datum, std::string >("query_random"); //pass analysis
     k.register_async_cht<2, bool, datum >("update_cht", pfi::lang::function<bool(bool,bool)>(&all_and)); //update
     k.register_async_cht<2, datum, std::string >("query_cht", pfi::lang::function<datum(datum,datum)>(&pass<datum >)); //analysis
+    k.register_async_cht<2, datum, std::string >("query_cht_nolock", pfi::lang::function<datum(datum,datum)>(&pass<datum >)); //nolock
     k.register_async_broadcast<bool, std::string >("save", pfi::lang::function<bool(bool,bool)>(&all_and)); //update
     k.register_async_broadcast<bool, std::string >("load", pfi::lang::function<bool(bool,bool)>(&all_and)); //update
     k.register_async_broadcast<std::map<std::string,std::map<std::string,std::string > > >("get_status", pfi::lang::function<std::map<std::string,std::map<std::string,std::string > >(std::map<std::string,std::map<std::string,std::string > >,std::map<std::string,std::map<std::string,std::string > >)>(&merge<std::string,std::map<std::string,std::string > >)); //analysis

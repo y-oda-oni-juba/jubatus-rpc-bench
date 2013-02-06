@@ -24,6 +24,7 @@ public:
     rpc_server::add<datum(std::string, std::string) >("query_random", pfi::lang::bind(&Impl::query_random, static_cast<Impl*>(this), pfi::lang::_1, pfi::lang::_2));
     rpc_server::add<bool(std::string, std::string, datum) >("update_cht", pfi::lang::bind(&Impl::update_cht, static_cast<Impl*>(this), pfi::lang::_1, pfi::lang::_2, pfi::lang::_3));
     rpc_server::add<datum(std::string, std::string, std::string) >("query_cht", pfi::lang::bind(&Impl::query_cht, static_cast<Impl*>(this), pfi::lang::_1, pfi::lang::_2, pfi::lang::_3));
+    rpc_server::add<datum(std::string, std::string, std::string) >("query_cht_nolock", pfi::lang::bind(&Impl::query_cht_nolock, static_cast<Impl*>(this), pfi::lang::_1, pfi::lang::_2, pfi::lang::_3));
     rpc_server::add<bool(std::string, std::string) >("save", pfi::lang::bind(&Impl::save, static_cast<Impl*>(this), pfi::lang::_1, pfi::lang::_2));
     rpc_server::add<bool(std::string, std::string) >("load", pfi::lang::bind(&Impl::load, static_cast<Impl*>(this), pfi::lang::_1, pfi::lang::_2));
     rpc_server::add<std::map<std::string, std::map<std::string, std::string > >(std::string) >("get_status", pfi::lang::bind(&Impl::get_status, static_cast<Impl*>(this), pfi::lang::_1));

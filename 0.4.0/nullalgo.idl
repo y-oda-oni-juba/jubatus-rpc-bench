@@ -18,6 +18,9 @@ service nullalgo {
   #@cht #@analysis #@pass
   datum query_cht(0: string name, 1: string id, 2: string param) # //@cht
 
+  #@cht #@nolock #@pass
+  datum query_cht_nolock(0: string name, 1: string id, 2: string param) # //@cht
+
   #@broadcast #@update #@all_and
   bool save(0: string name, 1: string id) # //@broadcast
 

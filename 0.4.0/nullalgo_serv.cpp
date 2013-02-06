@@ -8,6 +8,10 @@ using namespace jubatus::framework;
 
 namespace jubatus { namespace server { // do not change
 
+const int nullalgo_serv::string_size_ = 32;
+const int nullalgo_serv::large_string_size_ = 1024 * 1024;
+const int nullalgo_serv::number_num_ = 1;
+
 nullalgo_serv::nullalgo_serv(const server_argv& a,
                              const jubatus::common::cshared_ptr<jubatus::common::lock_service>& zk)
   :server_base(a)
@@ -27,7 +31,7 @@ bool nullalgo_serv::update_random(const datum &param) {
 }
 
 datum nullalgo_serv::query_random(const std::string &param) {
-  return string_datum_;
+  return get_stock_datum(param);
 }
 
 bool nullalgo_serv::update_cht(const std::string &id, const datum &param) {
@@ -35,10 +39,11 @@ bool nullalgo_serv::update_cht(const std::string &id, const datum &param) {
 }
 
 datum nullalgo_serv::query_cht(const std::string &id, const std::string &param) {
-  if ( param == "large" )
-    return large_string_datum_;
-  else
-    return string_datum_;
+  return get_stock_datum(param);
+}
+
+datum nullalgo_serv::query_cht_nolock(const std::string &id, const std::string &param) {
+  return get_stock_datum(param);
 }
 
 bool nullalgo_serv::save(const std::string &id) {
@@ -68,25 +73,28 @@ void nullalgo_serv::create_stock_datum() {
   using namespace std;
 
   // string datum
-  string_datum_.string_values.push_back( make_pair( string("key1"), string("value1")) );
-  string_datum_.string_values.push_back( make_pair( string("key2"), string("value2")) );
-  string_datum_.string_values.push_back( make_pair( string("key3"), string("value3")) );
+  string_datum_.string_values.push_back( make_pair( string("s"), 
+                                                    string( string_size_, 's')));
 
   // large string datum
-  stringstream value_ss;
-  for( int i = 0; i < 1024; ++i ) value_ss << '.';
-  string value(value_ss.str());
+  large_string_datum_.string_values.push_back( make_pair( string("l"),
+                                                          string( large_string_size_, 'l')));
 
-  for(int i = 0; i < 1024; ++i ) {
-    stringstream key_ss;
-    key_ss << "key-" << i;
-    string_datum_.string_values.push_back( make_pair( key_ss.str(), value ) );
-  }
-  
   // number datum
-  number_datum_.num_values.push_back( make_pair( string("key1"), 1.0));
-  number_datum_.num_values.push_back( make_pair( string("key2"), 2.0));
-  number_datum_.num_values.push_back( make_pair( string("key3"), 3.0));
+  for(int i = 0; i < number_num_; ++i ) {
+    stringstream key_ss;
+    key_ss << i;
+    number_datum_.num_values.push_back( make_pair( key_ss.str(), double(i)));
+  }
+}
+
+datum nullalgo_serv::get_stock_datum( const std::string &result_type ) {
+  if ( result_type == "large" )
+    return large_string_datum_;
+  else if ( result_type == "number" )
+    return number_datum_;
+  else
+    return string_datum_;
 }
 
 }} // namespace jubatus::server

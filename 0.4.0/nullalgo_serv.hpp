@@ -20,6 +20,7 @@ public:
 
   bool update_cht(const std::string &id, const datum &param);
   datum query_cht(const std::string &id, const std::string &param);
+  datum query_cht_nolock(const std::string& id, const std::string& param);
 
   // required for jubatus serv
   bool save(const std::string &id);
@@ -31,6 +32,11 @@ public:
 
 private:
   void create_stock_datum();
+  datum get_stock_datum(const std::string &result_type);
+
+  static const int string_size_;
+  static const int large_string_size_;
+  static const int number_num_;
 
   datum string_datum_;
   datum large_string_datum_;

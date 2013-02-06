@@ -25,6 +25,9 @@ public:
   datum query_cht(std::string name, std::string id, std::string param) //analysis cht(2)
   { JRLOCK__(p_); return get_p()->query_cht(id, param); }
 
+  datum query_cht_nolock(std::string name, std::string id, std::string param) //nolock cht(2)
+  { NOLOCK__(p_); return get_p()->query_cht_nolock(id, param); }
+
   bool save(std::string name, std::string id) //update broadcast
   { JWLOCK__(p_); return get_p()->save(id); }
 
