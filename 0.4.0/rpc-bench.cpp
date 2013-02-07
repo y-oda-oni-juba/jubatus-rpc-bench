@@ -62,12 +62,19 @@ public:
   };
 
 public:
-  Task(int id, int query_num, int method_id, 
+  Task(int id, int cht_size, int query_num, int method_id, 
        const std::string &host, int port, std::string &name) :
     id_(id), query_num_(query_num), method_id_(method_id),
     host_(host), port_(port), name_(name),
     timeout_sec_( 60.0 ),
     has_error_(false) {
+
+    for(int i = 0; i < cht_size; ++i ) {
+      int cht_id = (i + id_) % cht_size;
+      std::stringstream cht_id_ss;
+      cht_id_ss << cht_id;
+      cht_ids_.push_back( cht_id_ss.str());
+    }
   }
 
   void start() {
@@ -92,10 +99,6 @@ private:
     has_error_ = false;
     latency_rec_.reserve(query_num_);
 
-    std::stringstream id_ss;
-    id_ss << id_;
-    std::string id_str( id_ss.str() );
-
     std::string key_str( method_id_ == METHOD_QUERY_CHT_LARGE ? "large" : "" );
 
     jubatus::client::nullalgo client( host_, port_, timeout_sec_ );
@@ -104,12 +107,14 @@ private:
       // examine
       exec_time_.start();
       for(int i = 0; i < query_num_; ++i ) {
+        const std::string &cht_id = cht_ids_[ i % cht_ids_.size() ];
+
         TimeSpan lap_time;
         lap_time.start();
         if ( method_id_ == METHOD_QUERY_CHT_NOLOCK )
-          (void)client.query_cht_nolock( name_, id_str, key_str);
+          (void)client.query_cht_nolock( name_, cht_id, key_str);
         else {
-          (void)client.query_cht( name_, id_str, key_str);
+          (void)client.query_cht( name_, cht_id, key_str);
         }
         lap_time.stop();
 
@@ -129,6 +134,7 @@ private:
   int port_;
   std::string name_;
   double timeout_sec_;
+  std::vector<std::string> cht_ids_;
 
   pfi::lang::shared_ptr<pfi::concurrent::thread> thread_;
 
@@ -182,6 +188,8 @@ static void show_usage( std::ostream &out = std::cerr ) {
       << "  --method METHOD ( query_cht, query_cht_large, query_cht_nolock )" << std::endl
       << "  --timeout SEC" << std::endl
       << "  --dump-latency" << std::endl
+      << "  --no-divide-query" << std::endl
+      << "  --cht-size-hint" << std::endl
       << "  --version" << std::endl
       << "  --help" << std::endl;
 }
@@ -196,6 +204,7 @@ int main(int argc, char **argv) {
   int timeout_sec = 60;
   bool dump_latency = false;
   bool divide_query = true;
+  int cht_size_hint = 16;
 
   enum {
     OPTION_HOST = 100,
@@ -207,6 +216,7 @@ int main(int argc, char **argv) {
     OPTION_TIMEOUT,
     OPTION_DUMP_LATENCY,
     OPTION_NO_DIVIDE_QUERY,
+    OPTION_CHT_SIZE_HINT,
 
     OPTION_VERSION,
     OPTION_HELP,
@@ -221,6 +231,7 @@ int main(int argc, char **argv) {
     { "timeout",        required_argument, NULL, OPTION_TIMEOUT },
     { "dump-latency",   no_argument,       NULL, OPTION_DUMP_LATENCY },
     { "no-divide-query",no_argument,       NULL, OPTION_NO_DIVIDE_QUERY },
+    { "cht-size-hint",  required_argument, NULL, OPTION_CHT_SIZE_HINT },
 
     { "version",        no_argument,       NULL, OPTION_VERSION },
     { "help",           no_argument,       NULL, OPTION_HELP },
@@ -259,6 +270,9 @@ int main(int argc, char **argv) {
       case OPTION_NO_DIVIDE_QUERY:
         divide_query = false;
         break;
+      case OPTION_CHT_SIZE_HINT:
+        cht_size_hint = parse_positive_number( "cht-size-hint", optarg );
+        break;
       case OPTION_VERSION:
         show_version();
         return 0;
@@ -283,7 +297,8 @@ int main(int argc, char **argv) {
   int query_num_per_thr = divide_query ? (query_num + thread_num -1)/thread_num : query_num;
 
   for(int i = 0; i < thread_num; ++i ) {
-    task_ptr task( new task_type(i, query_num_per_thr, method_id, host, port, cluster_name ) );
+    task_ptr task( new task_type(i, cht_size_hint, query_num_per_thr, method_id, 
+                                 host, port, cluster_name ) );
     task->set_timeout_sec( double(timeout_sec) );
     tasks.push_back(task);
   }
