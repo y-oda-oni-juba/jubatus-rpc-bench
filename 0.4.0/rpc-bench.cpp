@@ -1,6 +1,7 @@
 // -*- mode: c++; coding: utf-8-unix -*-
 
 #include <getopt.h>
+#include <math.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -194,6 +195,7 @@ int main(int argc, char **argv) {
   int method_id = jubatus::rpc_bench::Task::METHOD_QUERY_CHT;
   int timeout_sec = 60;
   bool dump_latency = false;
+  bool divide_query = true;
 
   enum {
     OPTION_HOST = 100,
@@ -204,6 +206,7 @@ int main(int argc, char **argv) {
     OPTION_METHOD,
     OPTION_TIMEOUT,
     OPTION_DUMP_LATENCY,
+    OPTION_NO_DIVIDE_QUERY,
 
     OPTION_VERSION,
     OPTION_HELP,
@@ -217,6 +220,7 @@ int main(int argc, char **argv) {
     { "method",         required_argument, NULL, OPTION_METHOD },
     { "timeout",        required_argument, NULL, OPTION_TIMEOUT },
     { "dump-latency",   no_argument,       NULL, OPTION_DUMP_LATENCY },
+    { "no-divide-query",no_argument,       NULL, OPTION_NO_DIVIDE_QUERY },
 
     { "version",        no_argument,       NULL, OPTION_VERSION },
     { "help",           no_argument,       NULL, OPTION_HELP },
@@ -252,6 +256,9 @@ int main(int argc, char **argv) {
       case OPTION_DUMP_LATENCY:
         dump_latency = true;
         break;
+      case OPTION_NO_DIVIDE_QUERY:
+        divide_query = false;
+        break;
       case OPTION_VERSION:
         show_version();
         return 0;
@@ -273,8 +280,10 @@ int main(int argc, char **argv) {
   typedef pfi::lang::shared_ptr<task_type> task_ptr;
   std::vector<task_ptr> tasks;
 
+  int query_num_per_thr = divide_query ? (query_num + thread_num -1)/thread_num : query_num;
+
   for(int i = 0; i < thread_num; ++i ) {
-    task_ptr task( new task_type(i, query_num, method_id, host, port, cluster_name ) );
+    task_ptr task( new task_type(i, query_num_per_thr, method_id, host, port, cluster_name ) );
     task->set_timeout_sec( double(timeout_sec) );
     tasks.push_back(task);
   }
@@ -297,9 +306,12 @@ int main(int argc, char **argv) {
     for(int j = 0; j < (int)latency_rec.size(); ++j ) latency_total += latency_rec[j];
     query_total_count += latency_rec.size();
   }
-  double latency = latency_total/query_total_count;
+  double latency = query_total_count == 0 ? NAN : latency_total/query_total_count;
 
-  double query_per_sec = double(query_total_count)/(total_exec_time.elapsed_time_msec()/1000.0);
+  double query_per_sec = 
+    ( total_exec_time.elapsed_time_msec() == 0 ?
+      NAN :
+      double(query_total_count)/(total_exec_time.elapsed_time_msec()/1000.0) );
 
   std::cout << "#thread: " << thread_num << std::endl;
   std::cout << "total query: " << query_total_count << std::endl;
