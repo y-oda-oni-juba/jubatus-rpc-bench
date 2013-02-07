@@ -20,7 +20,7 @@ sample_num=${4:-3}
 this_file=`readlink -f "$0"`
 this_dir=`dirname "$this_file"`
 
-source "${this_dir}/hosts-standalone.sh"
+source "${this_dir}/hosts-distributed.sh"
 
 rpc_bench_bin="${this_dir}/../0.4.0/build/rpc-bench"
 

@@ -10,8 +10,8 @@ if [ $# -lt 3 ]; then
     exit 1
 fi
 
-serv_thr=$1
-serv_proc=$2
+serv_proc=$1
+serv_thr=$2
 log_dir=$3
 
 this_file=`readlink -f "$0"`
@@ -24,7 +24,7 @@ examine_one() {
     local query_num=$2
     local cli_thr=$3
 
-    logfile_basename="log-SA-${timestamp}-cli_thr-${cli_thr},${method},serv_thr-${serv_proc}-${serv_thr}.txt"
+    logfile_basename="log-ZK-${timestamp}-cli_thr-${cli_thr},${method},serv_thr-${serv_proc}-${serv_thr}.txt"
     logfile="$log_dir/$logfile_basename"
 
     echo $logfile_basename
