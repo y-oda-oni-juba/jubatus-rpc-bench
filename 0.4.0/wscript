@@ -68,8 +68,16 @@ def build(bld):
     )
 
   bld.program(
-    source = 'rpc-bench.cpp',
+    source = ['rpc-bench.cpp', 'utils.cpp'],
     target = 'rpc-bench',
+    use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_LANG', 'PFICOMMON_CONCURRENT',
+           'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
+           'MSGPACK', 'RT']
+    )
+
+  bld.program(
+    source = ['bare-rpc-serv.cpp', 'utils.cpp'],
+    target = 'bare-rpc-serv',
     use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_LANG', 'PFICOMMON_CONCURRENT',
            'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
            'MSGPACK', 'RT']

@@ -72,10 +72,10 @@ def build(bld):
            'MSGPACK', 'GLOG']
     )
 
-  # bld.program(
-  #   source = 'rpc-bench.cpp',
-  #   target = 'rpc-bench',
-  #   use = ['PFICOMMON', 'PFICOMMON_SYSTEM',
-  #          'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
-  #          'MSGPACK', 'RT']
-  #   )
+  bld.program(
+    source = ['rpc-bench.cpp', 'utils.cpp' ],
+    target = 'rpc-bench',
+    use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_CONCURRENT',
+           'PFICOMMON_NETWORK_MPRPC',
+           'MSGPACK', 'RT']
+    )

@@ -5,53 +5,25 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <exception>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <pficommon/concurrent/thread.h>
 #include <pficommon/lang/bind.h>
 #include <pficommon/lang/shared_ptr.h>
 #include <pficommon/system/time_util.h>
 
+#include "exception.h"
 #include "nullalgo_client.hpp"
+#include "utils.h"
 
 static const char *version_string = "1.0.0.130206a";
 
 namespace jubatus {
 namespace rpc_bench {
-
-class InvalidOption: public std::runtime_error {
-public:
-  explicit InvalidOption( const std::string &what_mesg ) : std::runtime_error(what_mesg) {
-  }
-};
-
-class TimeSpan {
-public:
-  typedef pfi::system::time::clock_time time_type;
-  
-  TimeSpan()
-    : start_(0, 0), end_(0, 0) {
-  }
-  void start() { start_ = TimeSpan::get_time(); }
-  void stop() { end_ = TimeSpan::get_time(); }
-  double elapsed_time_msec() const {
-    time_type diff = end_ - start_;
-    return diff.sec * 1000 + double(diff.usec)/1000.0;
-  }
-
-private:
-  static time_type get_time() {
-    struct timespec ts;
-    clock_gettime( CLOCK_REALTIME, &ts );
-    return time_type( ts.tv_sec, ts.tv_nsec/1000 );
-  }
-
-  time_type start_;
-  time_type end_;
-};
 
 class Task {
 public:
@@ -66,7 +38,7 @@ public:
        const std::string &host, int port, std::string &name) :
     id_(id), query_num_(query_num), method_id_(method_id),
     host_(host), port_(port), name_(name),
-    timeout_sec_( 60.0 ),
+    timeout_sec_( 60.0 ), dump_rpc_response_(false),
     has_error_(false) {
 
     for(int i = 0; i < cht_size; ++i ) {
@@ -93,6 +65,7 @@ public:
   const std::vector<double> &latency_records() { return latency_rec_; }
   bool has_error() const;
   void set_timeout_sec( double timeout_sec ) { timeout_sec_ = timeout_sec; }
+  void set_dump_rpc_response(bool sw) { dump_rpc_response_ = sw; }
   
 private:
   void run() {
@@ -111,10 +84,21 @@ private:
 
         TimeSpan lap_time;
         lap_time.start();
-        if ( method_id_ == METHOD_QUERY_CHT_NOLOCK )
-          (void)client.query_cht_nolock( name_, cht_id, key_str);
-        else {
-          (void)client.query_cht( name_, cht_id, key_str);
+        if ( !dump_rpc_response_ ) {
+          if ( method_id_ == METHOD_QUERY_CHT_NOLOCK )
+            (void)client.query_cht_nolock( name_, cht_id, key_str);
+          else {
+            (void)client.query_cht( name_, cht_id, key_str);
+          }
+        } else {
+          jubatus::datum response;
+          if ( method_id_ == METHOD_QUERY_CHT_NOLOCK )
+            response = client.query_cht_nolock( name_, cht_id, key_str);
+          else {
+            response = client.query_cht( name_, cht_id, key_str);
+          }
+          
+          inspect_rpc_response(response, i, std::cerr);
         }
         lap_time.stop();
 
@@ -127,6 +111,31 @@ private:
     }
   }
 
+  void inspect_rpc_response( const jubatus::datum &response, int nth, 
+                             std::ostream &out = std::cerr ) {
+    out << "task[" << id_ << "] " << (nth+1) << "/" << query_num_ << std::endl;
+
+    const std::vector< std::pair<std::string, std::string> > &sv = response.string_values;
+    if ( !sv.empty() ) {
+      out << "  sv: " << sv.size() << " items" << std::endl;
+      out << "    item size = {";
+      for(size_t i = 0; i < sv.size(); ++i ) {
+        out << " " << sv[i].second.size();
+      }
+      out << " }" << std::endl;
+    }
+
+    const std::vector< std::pair<std::string, double> > &nv = response.num_values;
+    if ( !nv.empty() ) {
+      out << "  nv: " << nv.size() << "items" << std::endl;
+      out << "    items = {";
+      for(size_t i = 0; i < nv.size(); ++i ) {
+        out << " " << nv[i].second;
+      }
+      out << std::endl;
+    }
+  }
+
   int id_;
   int query_num_;
   int method_id_;
@@ -134,6 +143,7 @@ private:
   int port_;
   std::string name_;
   double timeout_sec_;
+  bool dump_rpc_response_;
   std::vector<std::string> cht_ids_;
 
   pfi::lang::shared_ptr<pfi::concurrent::thread> thread_;
@@ -147,18 +157,6 @@ private:
 } // jubatus
 
 //// main
-
-static int parse_positive_number(const char *optname, const char *optarg, 
-                                 int lower_bound = 1 ) {
-  int val = strtol(optarg, NULL, 10);
-  if ( val < lower_bound ) {
-    std::stringstream ss;
-    ss << "--" << optname << " requires number >= " << lower_bound;
-    throw jubatus::rpc_bench::InvalidOption( ss.str() );
-  }
-
-  return val;
-}
 
 static int parse_method_id(const char *method_name) {
   using namespace jubatus::rpc_bench;
@@ -188,6 +186,7 @@ static void show_usage( std::ostream &out = std::cerr ) {
       << "  --method METHOD ( query_cht, query_cht_large, query_cht_nolock )" << std::endl
       << "  --timeout SEC" << std::endl
       << "  --dump-latency" << std::endl
+      << "  --dump-rpc-response" << std::endl
       << "  --no-divide-query" << std::endl
       << "  --cht-size-hint" << std::endl
       << "  --version" << std::endl
@@ -203,6 +202,7 @@ int main(int argc, char **argv) {
   int method_id = jubatus::rpc_bench::Task::METHOD_QUERY_CHT;
   int timeout_sec = 60;
   bool dump_latency = false;
+  bool dump_rpc_response = false;
   bool divide_query = true;
   int cht_size_hint = 16;
 
@@ -215,6 +215,7 @@ int main(int argc, char **argv) {
     OPTION_METHOD,
     OPTION_TIMEOUT,
     OPTION_DUMP_LATENCY,
+    OPTION_DUMP_RPC_RESPONSE,
     OPTION_NO_DIVIDE_QUERY,
     OPTION_CHT_SIZE_HINT,
 
@@ -230,6 +231,7 @@ int main(int argc, char **argv) {
     { "method",         required_argument, NULL, OPTION_METHOD },
     { "timeout",        required_argument, NULL, OPTION_TIMEOUT },
     { "dump-latency",   no_argument,       NULL, OPTION_DUMP_LATENCY },
+    { "dump-rpc-response", no_argument,    NULL, OPTION_DUMP_RPC_RESPONSE },
     { "no-divide-query",no_argument,       NULL, OPTION_NO_DIVIDE_QUERY },
     { "cht-size-hint",  required_argument, NULL, OPTION_CHT_SIZE_HINT },
 
@@ -240,6 +242,8 @@ int main(int argc, char **argv) {
   };
 
   try {
+    using jubatus::rpc_bench::parse_positive_number;
+
     int opt = 0;
     while( (opt = getopt_long_only(argc, argv, "", longopts, NULL)) != -1 ) {
       switch(opt) {
@@ -266,6 +270,9 @@ int main(int argc, char **argv) {
         break;
       case OPTION_DUMP_LATENCY:
         dump_latency = true;
+        break;
+      case OPTION_DUMP_RPC_RESPONSE:
+        dump_rpc_response = true;
         break;
       case OPTION_NO_DIVIDE_QUERY:
         divide_query = false;
@@ -300,6 +307,7 @@ int main(int argc, char **argv) {
     task_ptr task( new task_type(i, cht_size_hint, query_num_per_thr, method_id, 
                                  host, port, cluster_name ) );
     task->set_timeout_sec( double(timeout_sec) );
+    task->set_dump_rpc_response( dump_rpc_response );
     tasks.push_back(task);
   }
 

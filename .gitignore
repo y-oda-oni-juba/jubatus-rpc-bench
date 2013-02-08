@@ -16,6 +16,10 @@
 *~
 \#*
 
+# jubatus generators
+*.tmpl.cpp
+*.tmpl.hpp
+
 # ignore waf
 .lock-wafbuild
 .waf-*
