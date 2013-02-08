@@ -79,3 +79,11 @@ def build(bld):
            'PFICOMMON_NETWORK_MPRPC',
            'MSGPACK', 'RT']
     )
+
+  bld.program(
+    source = ['bare-rpc-serv.cpp', 'utils.cpp'],
+    target = 'bare-rpc-serv',
+    use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_LANG', 'PFICOMMON_CONCURRENT',
+           'PFICOMMON_NETWORK_MPRPC',
+           'MSGPACK', 'RT']
+    )
