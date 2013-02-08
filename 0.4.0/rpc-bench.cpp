@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include <pficommon/concurrent/thread.h>
 #include <pficommon/lang/bind.h>
@@ -189,6 +190,7 @@ static void show_usage( std::ostream &out = std::cerr ) {
       << "  --dump-rpc-response" << std::endl
       << "  --no-divide-query" << std::endl
       << "  --cht-size-hint" << std::endl
+      << "  --trim-mean #PERCENT" << std::endl
       << "  --version" << std::endl
       << "  --help" << std::endl;
 }
@@ -205,6 +207,7 @@ int main(int argc, char **argv) {
   bool dump_rpc_response = false;
   bool divide_query = true;
   int cht_size_hint = 16;
+  int trim_mean_percent = 5;
 
   enum {
     OPTION_HOST = 100,
@@ -218,6 +221,7 @@ int main(int argc, char **argv) {
     OPTION_DUMP_RPC_RESPONSE,
     OPTION_NO_DIVIDE_QUERY,
     OPTION_CHT_SIZE_HINT,
+    OPTION_TRIM_MEAN,
 
     OPTION_VERSION,
     OPTION_HELP,
@@ -234,6 +238,7 @@ int main(int argc, char **argv) {
     { "dump-rpc-response", no_argument,    NULL, OPTION_DUMP_RPC_RESPONSE },
     { "no-divide-query",no_argument,       NULL, OPTION_NO_DIVIDE_QUERY },
     { "cht-size-hint",  required_argument, NULL, OPTION_CHT_SIZE_HINT },
+    { "trim-mean",      required_argument, NULL, OPTION_TRIM_MEAN },
 
     { "version",        no_argument,       NULL, OPTION_VERSION },
     { "help",           no_argument,       NULL, OPTION_HELP },
@@ -279,6 +284,9 @@ int main(int argc, char **argv) {
         break;
       case OPTION_CHT_SIZE_HINT:
         cht_size_hint = parse_positive_number( "cht-size-hint", optarg );
+        break;
+      case OPTION_TRIM_MEAN:
+        trim_mean_percent = parse_positive_number( "trim-mean", optarg, 0 );
         break;
       case OPTION_VERSION:
         show_version();
@@ -326,10 +334,39 @@ int main(int argc, char **argv) {
   int query_total_count = 0;
   for( int i = 0; i < thread_num; ++i ) {
     const std::vector<double>&latency_rec = tasks[i]->latency_records();
-    for(int j = 0; j < (int)latency_rec.size(); ++j ) latency_total += latency_rec[j];
+    for(size_t j = 0; j < latency_rec.size(); ++j ) latency_total += latency_rec[j];
     query_total_count += latency_rec.size();
   }
-  double latency = query_total_count == 0 ? NAN : latency_total/query_total_count;
+  double latency_mean = query_total_count == 0 ? NAN : latency_total/query_total_count;
+
+  double latency_diff2_total = 0.0;
+  for( int i = 0; i < thread_num; ++i ) {
+    const std::vector<double>&latency_rec = tasks[i]->latency_records();
+    for(size_t j = 0; j < latency_rec.size(); ++j ) {
+      latency_diff2_total += (latency_mean - latency_rec[j])*(latency_mean - latency_rec[j]);
+    }
+  }
+  double latency_variance = query_total_count == 0 ? NAN : latency_diff2_total/query_total_count;
+
+  double latency_trim_mean = NAN;
+  if ( query_total_count > 0 ) {
+    std::vector<double> latency_all_rec;
+    latency_all_rec.reserve(query_total_count);
+
+    for( int i = 0; i < thread_num; ++i ) {
+      const std::vector<double>&latency_rec = tasks[i]->latency_records();
+      for(size_t j = 0; j < latency_rec.size(); ++j ) latency_all_rec.push_back(latency_rec[j]);
+    }
+    std::sort( latency_all_rec.begin(), latency_all_rec.end() );
+
+    int trim_count = (query_total_count * trim_mean_percent)/100/2;
+    if ( trim_count*2 < query_total_count ) {
+      double total = 0;
+      for( int i = trim_count; i < query_total_count-trim_count; ++i ) 
+        total += latency_all_rec[i];
+      latency_trim_mean = total/(query_total_count-trim_count*2);
+    }
+  }
 
   double query_per_sec = 
     ( total_exec_time.elapsed_time_msec() == 0 ?
@@ -340,14 +377,16 @@ int main(int argc, char **argv) {
   std::cout << "total query: " << query_total_count << std::endl;
   std::cout << "total time(msec): " << total_exec_time.elapsed_time_msec() << std::endl;
   std::cout << "query/sec: " << query_per_sec << std::endl;
-  std::cout << "mean latency(msec): " << latency << std::endl;
+  std::cout << "latency mean(msec): " << latency_mean << std::endl;
+  std::cout << "latency variance: " << latency_variance << std::endl;
+  std::cout << "latency trim "<< trim_mean_percent << "% mean(msec): " << latency_trim_mean << std::endl;
 
   if ( dump_latency ) {
     std::cout << "latency(msec): ";
     bool first = true;
     for( int i = 0; i < thread_num; ++i ) {
       const std::vector<double>&latency_rec = tasks[i]->latency_records();
-      for( int j = 0; j < (int)latency_rec.size(); ++j ) {
+      for( size_t j = 0; j < latency_rec.size(); ++j ) {
         if ( !first ) std::cout << ", ";
         std::cout << latency_rec[j];
         first = false;
