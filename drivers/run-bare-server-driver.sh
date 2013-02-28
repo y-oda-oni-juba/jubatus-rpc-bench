@@ -25,8 +25,9 @@ examine_one() {
     local method=$1
     local query_num=$2
     local cli_thr=$3
+    local sample=${4:-10}
 
-    if [ -n $opt_tag ]; then
+    if [ "$opt_tag" != "" ]; then
         tag="_${opt_tag}"
     fi
 
@@ -34,7 +35,7 @@ examine_one() {
     logfile="$log_dir/$logfile_basename"
 
     echo $logfile_basename
-    "$this_dir"/run-standalone.sh $method $query_num $cli_thr > $logfile 2>&1
+    "$this_dir"/run-standalone.sh $method $query_num $cli_thr $sample > $logfile 2>&1
 }
 
 # # method=query_cht, query_num=10000, thread_num=1, 2,4,8,16

@@ -23,12 +23,13 @@ examine_one() {
     local method=$1
     local query_num=$2
     local cli_thr=$3
+    local sample=${4:-10}
 
     logfile_basename="log-ZK-${timestamp}-cli_thr-${cli_thr},${method},serv_thr-${serv_proc}-${serv_thr}.txt"
     logfile="$log_dir/$logfile_basename"
 
     echo $logfile_basename
-    "$this_dir"/run-distributed.sh $method $query_num $cli_thr > $logfile 2>&1
+    "$this_dir"/run-distributed.sh $method $query_num $cli_thr $sample > $logfile 2>&1
 }
 
 # method=query_cht, query_num=10000, thread_num=1, 2,4,8,16
