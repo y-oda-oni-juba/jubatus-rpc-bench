@@ -1,0 +1,44 @@
+# -*- mode: python -*-
+
+from subprocess import call
+
+name = 'nullalgo'
+
+def options(opt):
+  opt.load('compiler_cxx')
+
+def configure(conf):
+  conf.env.CXXFLAGS += ['-O2', '-Wall', '-g', '-pipe']
+  conf.load('compiler_cxx')
+
+  conf.check_cxx(lib = 'msgpack', mandatory = True)
+  conf.check_cxx(lib = 'glog', mandatory = True)
+
+  conf.check_cxx(lib = 'pficommon', mandatory = True)
+  conf.check_cxx(lib = 'pficommon_system', mandatory = True)
+  conf.check_cxx(lib = 'pficommon_concurrent', mandatory = True)
+  conf.check_cxx(lib = 'pficommon_lang', mandatory = True)
+  conf.check_cxx(lib = 'pficommon_text', mandatory = True)
+  conf.check_cxx(lib = 'pficommon_math', mandatory = True)
+
+  conf.check_cxx(lib = 'jubatus_mpio', mandatory = True)
+  conf.check_cxx(lib = 'jubatus_msgpack-rpc', mandatory = True)
+
+  conf.check_cxx(lib = 'rt', mandatory = True )
+
+def build(bld):
+  bld.program(
+    source = ['rpc-bench.cpp', 'utils.cpp'],
+    target = 'rpc-bench',
+    use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_LANG', 'PFICOMMON_CONCURRENT',
+           'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
+           'MSGPACK', 'RT']
+    )
+
+  bld.program(
+    source = ['bare-rpc-serv.cpp', 'utils.cpp'],
+    target = 'bare-rpc-serv',
+    use = ['PFICOMMON', 'PFICOMMON_SYSTEM', 'PFICOMMON_LANG', 'PFICOMMON_CONCURRENT',
+           'JUBATUS_MPIO', 'JUBATUS_MSGPACK-RPC',
+           'MSGPACK', 'RT']
+    )
